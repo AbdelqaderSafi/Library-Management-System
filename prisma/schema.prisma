@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  LIBRARIAN
+  MEMBER
+}
+enum TransactionStatus {
+ BORROWED
+ RETURNED 
+ OVERDUE
+}
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole     @default(MEMBER)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  
+  transactions BorrowTransaction[]
+}
+
+model Book {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?  
+  publishDate    DateTime @db.Date @map("publish_date") 
+  stock          Int
+  availableStock Int      @map("available_stock")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  transactions   BorrowTransaction[]
+  authors      Author[]
+  categories   Category[]
+}
+
+model Author {
+  id   String  @id @default(uuid())
+  name String
+  bio  String?
+
+  books Book[]
+
+  @@map("authors")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+
+  
+  books Book[]
+
+  @@map("categories")
+}
+
+model BorrowTransaction {
+  id         String            @id @default(uuid())
+  userId     String            @map("user_id")
+  bookId     String            @map("book_id")
+  borrowDate DateTime          @default(now()) @db.Date @map("borrow_date")
+  dueDate    DateTime          @db.Date @map("due_date")
+  returnDate DateTime?         @db.Date @map("return_date") 
+  status     TransactionStatus @default(BORROWED)
+
+  user User @relation(fields: [userId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
+}
+
