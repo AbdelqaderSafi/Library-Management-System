@@ -1,26 +1,109 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
+
+import { RegisterDTO, UserResponseDTO } from '../auth/dto/auth.dto';
+import { DatabaseService } from '../database/database.service';
+import { User } from '@prisma/client';
+import { removeFields } from '../util/object.util';
+import {
+  PaginationQueryType,
+  PaginationResponseType,
+} from 'src/types/util.types';
+import { updateUserDTO } from './dto/user.dto';
 
 @Injectable()
 export class UserService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(private prismaService: DatabaseService) {}
+
+  create(registerDTO: RegisterDTO) {
+    return this.prismaService.user.create({
+      data: registerDTO,
+    });
   }
 
-  findAll() {
-    return `This action returns all user`;
+  findAll(
+    query: PaginationQueryType,
+  ): Promise<PaginationResponseType<Omit<User, 'password'>>> {
+    return this.prismaService.$transaction(async (prisma) => {
+      const pagination = this.prismaService.handleQueryPagination(query);
+      const users = await this.prismaService.user.findMany({
+        ...removeFields(pagination, ['page']),
+        omit: {
+          password: true,
+        },
+      });
+
+      const count = await this.prismaService.user.count();
+      return {
+        data: users,
+        ...this.prismaService.formatPaginationResponse({
+          page: pagination.page,
+          count,
+          limit: pagination.take,
+        }),
+      };
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  findByEmail(email: string) {
+    return this.prismaService.user.findUnique({
+      where: { email },
+    });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async findOne(id: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id },
+      omit: { password: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return user;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async update(id: string, userUpdatePayload: updateUserDTO) {
+    // Check if user exists
+    const user = await this.prismaService.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return this.prismaService.user.update({
+      where: { id },
+      data: userUpdatePayload,
+      omit: {
+        password: true,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    // Check if user exists
+    const user = await this.prismaService.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    return this.prismaService.user.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
+  }
+
+  mapUserWithoutPassword(user: User): UserResponseDTO['userData'] {
+    const userWithoutPassword = removeFields(user, ['password']);
+
+    return {
+      ...userWithoutPassword,
+      id: userWithoutPassword.id,
+    };
   }
 }
