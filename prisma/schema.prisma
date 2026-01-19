@@ -53,8 +53,8 @@ model Book {
 
 model Author {
   id   String  @id @default(uuid())
-  name String
-  bio  String?
+  name String   @unique
+  
 
   books Book[]
 
