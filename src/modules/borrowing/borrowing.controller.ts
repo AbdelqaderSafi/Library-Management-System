@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { BorrowingService } from './borrowing.service';
 import type {
@@ -14,9 +15,14 @@ import type {
 } from './dto/borrowing.dto';
 import type { UpdateBorrowingDTO } from './dto/borrowing.dto';
 import { ZodValidationPipe } from 'src/pipes/zod.validation.pipe';
-import { borrowingValidationSchema } from './util/borrowing.validation';
+import {
+  borrowingPaginationSchema,
+  borrowingValidationSchema,
+  updateBorrowingValidationSchema,
+} from './util/borrowing.validation';
 import { User } from 'src/decorators/user.decorator';
 import { UserResponseDTO } from '../auth/dto/auth.dto';
+import type { borrowQuery } from '../book/types/book.types';
 
 @Controller('borrowing')
 export class BorrowingController {
@@ -32,26 +38,28 @@ export class BorrowingController {
   }
 
   @Get()
-  findAll() {
-    return this.borrowingService.findAll();
+  findAll(
+    @Query(new ZodValidationPipe(borrowingPaginationSchema)) query: borrowQuery,
+  ) {
+    return this.borrowingService.findAll(query);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.borrowingService.findOne(+id);
+    return this.borrowingService.findOne(id);
   }
 
-  // @Patch(':id')
-  // update(
-  //   @Param('id') id: string,
-  //   @Body(ZodValidationPipe(updateBorrowingValidationSchema))
-  //   updateBorrowingDto: UpdateBorrowingDTO,
-  // ) {
-  //   return this.borrowingService.update(+id, updateBorrowingDto);
-  // }
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateBorrowingValidationSchema))
+    updateBorrowingDto: UpdateBorrowingDTO,
+  ) {
+    return this.borrowingService.update(id, updateBorrowingDto);
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.borrowingService.remove(+id);
+    return this.borrowingService.remove(id);
   }
 }

@@ -9,6 +9,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateBorrowingDTO } from './dto/borrowing.dto';
 import { UpdateBorrowingDTO } from './dto/borrowing.dto';
 import { DatabaseService } from '../database/database.service';
+import { borrowQuery } from '../book/types/book.types';
+// import { Prisma, TransactionStatus } from 'generated/prisma/wasm';
+import { Prisma, TransactionStatus } from '@prisma/client';
+import { removeFields } from '../util/object.util';
 
 @Injectable()
 export class BorrowingService {
@@ -67,27 +71,92 @@ export class BorrowingService {
           bookId: createBorrowingDto.bookId,
           dueDate: createBorrowingDto.dueDate,
         },
-        include: { book: true, user: true },
+        include: { book: true, user: { omit: { password: true } } },
       });
 
       return borrowing;
     });
   }
 
-  findAll() {
-    return `This action returns all borrowing`;
+  findAll(query: borrowQuery) {
+    return this.prisma.$transaction(async (prisma) => {
+      const whereClause: Prisma.BorrowTransactionWhereInput = query.status
+        ? {
+            status: query.status as TransactionStatus,
+          }
+        : {};
+      const pagination = this.prisma.handleQueryPagination(query);
+      const borrowTransactions = await prisma.borrowTransaction.findMany({
+        ...removeFields(pagination, ['page']),
+        where: whereClause,
+      });
+
+      const count = await prisma.borrowTransaction.count({
+        where: whereClause,
+      });
+
+      return {
+        data: borrowTransactions,
+        ...this.prisma.formatPaginationResponse({
+          page: pagination.page,
+          count,
+          limit: pagination.take,
+        }),
+      };
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} borrowing`;
+  findOne(id: string) {
+    return this.prisma.borrowTransaction.findUnique({
+      where: { id },
+      include: {
+        book: true,
+        user: {
+          omit: { password: true },
+        },
+      },
+    });
   }
 
-  update(id: number, updateBorrowingDto: UpdateBorrowingDTO) {
-    return `This action updates a #${id} borrowing`;
+  async update(id: string, updateBorrowingDto: UpdateBorrowingDTO) {
+    return this.prisma.$transaction(async (tx) => {
+      // Get current borrow transaction
+      const borrowTransaction = await tx.borrowTransaction.findUnique({
+        where: { id },
+      });
+
+      if (!borrowTransaction) {
+        throw new NotFoundException('Borrow transaction not found');
+      }
+
+      // If status is changing to RETURNED, increment available stock
+      if (
+        updateBorrowingDto.status === 'RETURNED' &&
+        borrowTransaction.status !== 'RETURNED'
+      ) {
+        await tx.book.update({
+          where: { id: borrowTransaction.bookId },
+          data: { availableStock: { increment: 1 } },
+        });
+
+        // Set return date if not provided
+        if (!updateBorrowingDto.returnDate) {
+          updateBorrowingDto.returnDate = new Date();
+        }
+      }
+
+      return tx.borrowTransaction.update({
+        where: { id },
+        data: updateBorrowingDto,
+      });
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} borrowing`;
+  remove(id: string) {
+    return this.prisma.borrowTransaction.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
   }
 
   // Cron job that runs every day at midnight

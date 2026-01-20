@@ -8,5 +8,5 @@ export type UpdateBorrowingDTO = Partial<
 >;
 
 export type BorrowingResponseDTO = Prisma.BorrowTransactionGetPayload<{
-  include: { book: true; user: true };
+  include: { book: true; user: { omit: { password: true } } };
 }>;

@@ -63,6 +63,16 @@ export class BookService {
     });
   }
 
+  findOne(id: string) {
+    return this.prismaService.book.findUnique({
+      where: { id },
+      include: {
+        authors: true,
+        categories: true,
+      },
+    });
+  }
+
   findAllAuthor(query: AuthorQuery) {
     return this.prismaService.$transaction(async (prisma) => {
       const whereClause: Prisma.AuthorWhereInput = query.name
@@ -88,16 +98,6 @@ export class BookService {
           limit: pagination.take,
         }),
       };
-    });
-  }
-
-  findOne(id: string) {
-    return this.prismaService.book.findUnique({
-      where: { id },
-      include: {
-        authors: true,
-        categories: true,
-      },
     });
   }
 

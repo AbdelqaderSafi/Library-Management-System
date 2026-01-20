@@ -6,3 +6,6 @@ export type BookQuery = PaginationQueryType & {
 export type AuthorQuery = PaginationQueryType & {
   name?: string;
 };
+export type borrowQuery = PaginationQueryType & {
+  status?: string;
+};

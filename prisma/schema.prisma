@@ -79,7 +79,8 @@ model BorrowTransaction {
   dueDate    DateTime          @db.Date @map("due_date")
   returnDate DateTime?         @db.Date @map("return_date") 
   status     TransactionStatus @default(BORROWED)
-
+  isDeleted   Boolean           @default(false) @map("is_deleted")
+  
   user User @relation(fields: [userId], references: [id])
   book Book @relation(fields: [bookId], references: [id])
 }
