@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { BookModule } from './modules/book/book.module';
+import { BorrowingModule } from './modules/borrowing/borrowing.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { BookModule } from './modules/book/book.module';
     UserModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BookModule,
+    BorrowingModule,
+    ScheduleModule.forRoot(),
   ],
 })
 export class AppModule {}
