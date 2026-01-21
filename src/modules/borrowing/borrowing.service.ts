@@ -10,7 +10,6 @@ import { CreateBorrowingDTO } from './dto/borrowing.dto';
 import { UpdateBorrowingDTO } from './dto/borrowing.dto';
 import { DatabaseService } from '../database/database.service';
 import { borrowQuery } from '../book/types/book.types';
-// import { Prisma, TransactionStatus } from 'generated/prisma/wasm';
 import { Prisma, TransactionStatus } from '@prisma/client';
 import { removeFields } from '../util/object.util';
 

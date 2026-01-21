@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { RegisterDTO, UserResponseDTO } from '../auth/dto/auth.dto';
 import { DatabaseService } from '../database/database.service';
@@ -63,14 +67,23 @@ export class UserService {
     return user;
   }
 
-  async update(id: string, userUpdatePayload: updateUserDTO) {
+  async update(
+    id: string,
+    userUpdatePayload: updateUserDTO,
+    user: Express.Request['user'],
+  ) {
     // Check if user exists
-    const user = await this.prismaService.user.findUnique({
+    const existingUser = await this.prismaService.user.findUnique({
       where: { id },
     });
 
-    if (!user) {
+    if (!existingUser) {
       throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    // Check if the user is trying to update their own data
+    if (user!.id !== id) {
+      throw new ForbiddenException('You can only update your own profile');
     }
 
     return this.prismaService.user.update({

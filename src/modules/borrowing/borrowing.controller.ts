@@ -23,11 +23,13 @@ import {
 import { User } from 'src/decorators/user.decorator';
 import { UserResponseDTO } from '../auth/dto/auth.dto';
 import type { borrowQuery } from '../book/types/book.types';
+import { Roles } from 'src/decorators/roles.decorator';
 
 @Controller('borrowing')
 export class BorrowingController {
   constructor(private readonly borrowingService: BorrowingService) {}
 
+  @Roles(['MEMBER'])
   @Post()
   create(
     @Body(new ZodValidationPipe(borrowingValidationSchema))
@@ -37,6 +39,7 @@ export class BorrowingController {
     return this.borrowingService.create(createBorrowingDto, user);
   }
 
+  @Roles(['ADMIN', 'LIBRARIAN'])
   @Get()
   findAll(
     @Query(new ZodValidationPipe(borrowingPaginationSchema)) query: borrowQuery,
@@ -44,12 +47,13 @@ export class BorrowingController {
     return this.borrowingService.findAll(query);
   }
 
+  @Roles(['ADMIN', 'LIBRARIAN'])
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.borrowingService.findOne(id);
   }
 
-  @Patch(':id')
+  @Roles(['LIBRARIAN'])
   update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateBorrowingValidationSchema))
@@ -58,6 +62,7 @@ export class BorrowingController {
     return this.borrowingService.update(id, updateBorrowingDto);
   }
 
+  @Roles(['LIBRARIAN', 'ADMIN'])
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.borrowingService.remove(id);
