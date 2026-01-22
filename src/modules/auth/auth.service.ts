@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { LoginDTO, RegisterDTO, UserResponseDTO } from './dto/auth.dto';
 import * as argon from 'argon2';
 import { UserService } from '../user/user.service';
@@ -16,6 +20,12 @@ export class AuthService {
   ) {}
 
   async register(registerDTO: RegisterDTO): Promise<UserResponseDTO> {
+    // Check if email already exists
+    const existingUser = await this.userService.findByEmail(registerDTO.email);
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
     // Hash password
     const hashedPassword = await this.hashPassword(registerDTO.password);
 

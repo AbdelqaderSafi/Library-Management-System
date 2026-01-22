@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { BookResponseDTO, CreateBookDTO } from './dto/book.dto';
 import { UpdateBookDTO } from './dto/book.dto';
 import { Prisma } from '@prisma/client';
@@ -63,14 +63,20 @@ export class BookService {
     });
   }
 
-  findOne(id: string) {
-    return this.prismaService.book.findUnique({
+  async findOne(id: string) {
+    const book = await this.prismaService.book.findUnique({
       where: { id },
       include: {
         authors: true,
         categories: true,
       },
     });
+
+    if (!book) {
+      throw new NotFoundException(`Book with id ${id} not found`);
+    }
+
+    return book;
   }
 
   findAllAuthor(query: AuthorQuery) {
@@ -101,19 +107,38 @@ export class BookService {
     });
   }
 
-  findOneAuthor(id: string) {
-    return this.prismaService.author.findUnique({
+  async findOneAuthor(id: string) {
+    const author = await this.prismaService.author.findUnique({
       where: { id },
       include: {
         books: true,
       },
     });
+
+    if (!author) {
+      throw new NotFoundException(`Author with id ${id} not found`);
+    }
+
+    return author;
   }
 
   async update(
     id: string,
     updateBookDto: UpdateBookDTO,
   ): Promise<BookResponseDTO> {
+    // Check if book exists first
+    const existingBook = await this.prismaService.book.findUnique({
+      where: { id },
+    });
+
+    if (!existingBook) {
+      throw new NotFoundException(`Book with id ${id} not found`);
+    }
+
+    if (existingBook.isDeleted) {
+      throw new NotFoundException(`Book with id ${id} not found`);
+    }
+
     const { authors, categories, ...bookData } = updateBookDto;
 
     const dataPayload: Prisma.BookUpdateInput = {
@@ -148,7 +173,19 @@ export class BookService {
     });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
+    const book = await this.prismaService.book.findUnique({
+      where: { id },
+    });
+
+    if (!book) {
+      throw new NotFoundException(`Book with id ${id} not found`);
+    }
+
+    if (book.isDeleted) {
+      throw new NotFoundException(`Book with id ${id} not found`);
+    }
+
     return this.prismaService.book.update({
       where: { id },
       data: { isDeleted: true },

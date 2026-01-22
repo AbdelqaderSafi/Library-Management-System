@@ -105,8 +105,8 @@ export class BorrowingService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.borrowTransaction.findUnique({
+  async findOne(id: string) {
+    const borrowTransaction = await this.prisma.borrowTransaction.findUnique({
       where: { id },
       include: {
         book: true,
@@ -115,6 +115,12 @@ export class BorrowingService {
         },
       },
     });
+
+    if (!borrowTransaction) {
+      throw new NotFoundException(`Borrow transaction with id ${id} not found`);
+    }
+
+    return borrowTransaction;
   }
 
   async update(id: string, updateBorrowingDto: UpdateBorrowingDTO) {
@@ -151,7 +157,19 @@ export class BorrowingService {
     });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
+    const borrowTransaction = await this.prisma.borrowTransaction.findUnique({
+      where: { id },
+    });
+
+    if (!borrowTransaction) {
+      throw new NotFoundException(`Borrow transaction with id ${id} not found`);
+    }
+
+    if (borrowTransaction.isDeleted) {
+      throw new NotFoundException(`Borrow transaction with id ${id} not found`);
+    }
+
     return this.prisma.borrowTransaction.update({
       where: { id },
       data: { isDeleted: true },

@@ -37,7 +37,7 @@ export class AuthGuard implements CanActivate {
     // auth header = "Bearer <token>"
     const jwt = authHeader?.split(' ')[1];
     if (!jwt) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Access token is required');
     }
 
     try {
@@ -45,17 +45,28 @@ export class AuthGuard implements CanActivate {
       const payload = this.jwtService.verify<Token_Payload>(jwt);
 
       // get user from db
-      const user = await this.prismaService.user.findUniqueOrThrow({
+      const user = await this.prismaService.user.findUnique({
         where: { id: payload.sub },
       });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (user.isDeleted) {
+        throw new UnauthorizedException('User account has been deleted');
+      }
 
       // attach user to request
       req.user = {
         ...removeFields(user, ['password']),
         id: user.id,
       };
-    } catch {
-      throw new UnauthorizedException();
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid or expired token');
     }
 
     return true;
