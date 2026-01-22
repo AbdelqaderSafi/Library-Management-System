@@ -54,6 +54,7 @@ export class BorrowingController {
   }
 
   @Roles(['LIBRARIAN'])
+  @Patch(':id')
   update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateBorrowingValidationSchema))
