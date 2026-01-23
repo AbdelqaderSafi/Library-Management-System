@@ -1,60 +1,128 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📚 Library Management System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A professional library management system built with **NestJS**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## ✨ Key Features
 
-## Description
+- JWT Authentication + Role-Based Access Control (RBAC)
+- Book & Author Management with Many-to-Many relationships
+- Borrowing System with automatic stock tracking
+- Soft Delete, Pagination, and Search functionality
+- Automated Cron jobs for overdue books
+- Swagger API Documentation
+- Unit & E2E Tests
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 🛠️ Tech Stack
 
-## Project setup
+**Backend:** NestJS, TypeScript | **Database:** PostgreSQL, Prisma | **Security:** JWT, Argon2 | **Validation:** Zod | **API Docs:** Swagger
+
+## 📋 Prerequisites
+
+- Node.js (v18+)
+- PostgreSQL
+
+## 🚀 Quick Start
 
 ```bash
-$ npm install
+# 1. Clone and install
+git clone <repository-url>
+cd library-management-system
+npm install
+
+# 2. Setup environment
+cp .env.example .env
+# Edit .env with your PostgreSQL credentials
+
+# 3. Setup database
+npx prisma generate
+npx prisma migrate deploy
+
+# 4. Run the application
+npm run start:dev
 ```
 
-## Compile and run the project
+**Access:**
 
-```bash
-# development
-$ npm run start
+- API: `http://localhost:3000`
+- Swagger Docs: `http://localhost:3000/api`
 
-# watch mode
-$ npm run start:dev
+## 🔐 Environment Variables
 
-# production mode
-$ npm run start:prod
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/library_db"
+JWT_SECRET="your-secret-key"
+PORT=3000
 ```
 
-## Run tests
+## 📂 Project Structure
+
+```
+src/
+├── modules/
+│   ├── auth/           # JWT Authentication & RBAC
+│   ├── user/           # User management
+│   ├── book/           # Books, Authors, Categories
+│   ├── borrowing/      # Borrowing system + Cron jobs
+│   └── database/       # Prisma service
+├── decorators/         # Custom decorators
+├── guards/             # Auth & Role guards
+└── pipes/              # Validation pipes
+```
+
+## 🔑 Main API Endpoints
+
+**Auth:** `/auth/register`, `/auth/login`  
+**Books:** `/books` (GET/POST/PUT/DELETE)  
+**Borrowing:** `/borrowing` (GET/POST), `/borrowing/:id/return`  
+**Users:** `/users` (Admin only)
+
+📖 **Full documentation:** `http://localhost:3000/api` (Swagger)
+
+## 👥 User Roles
+
+- **ADMIN** - Full access
+- **LIBRARIAN** - Manage books & borrowing
+- **MEMBER** - Borrow & return books
+
+## 🧪 Useful Commands
 
 ```bash
-# unit tests
-$ npm run test
+npm run test              # Run tests
+npx prisma studio         # Open database GUI
+npx prisma migrate dev    # Create migration
+```
 
-# e2e tests
-$ npm run test:e2e
+## 📄 License
 
-# test coverage
-$ npm run test:cov
+UNLICENSED
+
+## 🧪 Testing
+
+```bash
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
+
+# Watch mode
+npm run test:watch
+```
+
+## 📊 Database Management
+
+```bash
+# Open Prisma Studio (Visual Database Browser)
+npx prisma studio
+
+# Create a new migration
+npx prisma migrate dev --name migration_name
+
+# Reset database (⚠️ Development only!)
+npx prisma migrate reset
 ```
 
 ## Deployment
