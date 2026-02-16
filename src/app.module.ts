@@ -10,9 +10,11 @@ import { BorrowingModule } from './modules/borrowing/borrowing.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
+    MongooseModule.forRoot(process.env.MONGO_URI),
     DatabaseModule,
     AuthModule,
     UserModule,

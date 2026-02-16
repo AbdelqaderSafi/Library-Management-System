@@ -8,15 +8,12 @@ import * as argon from 'argon2';
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
-// import { ConfigService } from '@nestjs/config';
-// import { EnvVariables } from 'src/types/declartion-mergin';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-    // private configService: ConfigService<EnvVariables>,
   ) {}
 
   async register(registerDTO: RegisterDTO): Promise<UserResponseDTO> {
