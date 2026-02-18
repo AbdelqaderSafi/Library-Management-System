@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -9,7 +9,12 @@ export enum UserRole {
   MEMBER = 'MEMBER',
 }
 
-@Schema({ timestamps: true, collection: 'users' })
+@Schema({
+  timestamps: true,
+  collection: 'users',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
@@ -26,14 +31,19 @@ export class User {
   @Prop({ default: false })
   isDeleted: boolean;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'BorrowTransaction' }] })
-  transactions: Types.ObjectId[];
-
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ email: 1 });
+// No need to index email again as unique: true already creates an index
 UserSchema.index({ isDeleted: 1 });
+
+// Virtual populate: get all transactions for this user
+UserSchema.virtual('transactions', {
+  ref: 'BorrowTransaction',
+  localField: '_id',
+  foreignField: 'userId',
+  match: { isDeleted: false },
+});

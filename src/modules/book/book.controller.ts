@@ -85,7 +85,7 @@ export class BookController {
   create(
     @Body(new ZodValidationPipe(bookValidationSchema))
     createBookDto: CreateBookDTO,
-  ): Promise<BookResponseDTO> {
+  ) {
     return this.bookService.create(createBookDto);
   }
 
@@ -213,7 +213,7 @@ export class BookController {
     return this.bookService.findOneAuthor(id);
   }
 
-  @Roles(['LIBRARIAN', 'ADMIN'])
+  @Roles(['LIBRARIAN', 'ADMIN', 'MEMBER'])
   @Patch(':id')
   @ApiOperation({ summary: 'Update a book (Librarian/Admin only)' })
   @ApiParam({ name: 'id', type: String, description: 'Book ID' })

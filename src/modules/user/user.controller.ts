@@ -127,9 +127,9 @@ export class UserController {
     return this.userService.findOne(id);
   }
 
-  @Roles(['ADMIN', 'LIBRARIAN'])
+  @Roles(['ADMIN', 'LIBRARIAN', 'MEMBER'])
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a user (Admin/Librarian only)' })
+  @ApiOperation({ summary: 'Update a user' })
   @ApiParam({ name: 'id', type: String, description: 'User ID' })
   @ApiBody({
     schema: {
@@ -157,7 +157,7 @@ export class UserController {
             id: { type: 'string' },
             name: { type: 'string' },
             email: { type: 'string' },
-            role: { type: 'string' },
+            role: { type: 'string', enum: ['ADMIN', 'LIBRARIAN', 'MEMBER'] },
             createdAt: { type: 'string', format: 'date-time' },
           },
         },

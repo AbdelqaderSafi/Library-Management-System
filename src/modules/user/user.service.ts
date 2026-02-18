@@ -56,11 +56,21 @@ export class UserService {
   }
 
   async findOne(id: string) {
-    const user = await this.userModel.findById(id).select('-password').exec();
+    const user = await this.userModel
+      .findById(id)
+      .select('-password')
+      .populate({
+        path: 'transactions',
+        populate: { path: 'bookId', select: 'title' },
+      })
+      .exec();
 
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
+
+    // Debug log
+    console.log('User object:', JSON.stringify(user, null, 2));
 
     return user;
   }

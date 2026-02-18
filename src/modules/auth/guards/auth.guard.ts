@@ -7,16 +7,18 @@ import {
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { Token_Payload } from '../types/user-auth.type';
-import { DatabaseService } from 'src/modules/database/database.service';
 import { removeFields } from 'src/modules/util/object.util';
 import { Reflector } from '@nestjs/core';
 import { IsPublic } from 'src/decorators/public.decorator';
+import { InjectModel } from '@nestjs/mongoose';
+import { User } from 'src/modules/user/schemas/user.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private prismaService: DatabaseService,
+    @InjectModel(User.name) private userModel: Model<User>,
     private reflector: Reflector,
   ) {}
   async canActivate(context: ExecutionContext) {
@@ -45,9 +47,7 @@ export class AuthGuard implements CanActivate {
       const payload = this.jwtService.verify<Token_Payload>(jwt);
 
       // get user from db
-      const user = await this.prismaService.user.findUnique({
-        where: { id: payload.sub },
-      });
+      const user = await this.userModel.findById(payload.sub).exec();
 
       if (!user) {
         throw new UnauthorizedException('User not found');
@@ -59,8 +59,12 @@ export class AuthGuard implements CanActivate {
 
       // attach user to request
       req.user = {
-        ...removeFields(user, ['password']),
         id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isDeleted: user.isDeleted,
+        createdAt: user.createdAt!,
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {

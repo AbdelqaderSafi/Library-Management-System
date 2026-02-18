@@ -3,7 +3,12 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type BookDocument = HydratedDocument<Book>;
 
-@Schema({ timestamps: true, collection: 'books' })
+@Schema({
+  timestamps: true,
+  collection: 'books',
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+})
 export class Book {
   @Prop({ required: true, trim: true })
   title: string;
@@ -23,9 +28,6 @@ export class Book {
   @Prop({ default: false })
   isDeleted: boolean;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'BorrowTransaction' }] })
-  transactions: Types.ObjectId[];
-
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Author' }] })
   authors: Types.ObjectId[];
 
@@ -40,3 +42,10 @@ export const BookSchema = SchemaFactory.createForClass(Book);
 
 BookSchema.index({ title: 'text' });
 BookSchema.index({ isDeleted: 1 });
+
+// Virtual populate: get all transactions for this book
+BookSchema.virtual('transactions', {
+  ref: 'BorrowTransaction',
+  localField: '_id',
+  foreignField: 'bookId',
+});
