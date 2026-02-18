@@ -10,111 +10,110 @@ import { CreateBorrowingDTO } from './dto/borrowing.dto';
 import { UpdateBorrowingDTO } from './dto/borrowing.dto';
 import { DatabaseService } from '../database/database.service';
 import { borrowQuery } from '../book/types/book.types';
-import { Prisma, TransactionStatus } from '@prisma/client';
-import { removeFields } from '../util/object.util';
+import { InjectModel } from '@nestjs/mongoose';
+import { BorrowTransaction } from './schemas/borrow-transaction.schema';
+import { Book } from '../book/schemas/book.schema';
+import { Model, Types } from 'mongoose';
 
 @Injectable()
 export class BorrowingService {
   private readonly logger = new Logger(BorrowingService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    @InjectModel(BorrowTransaction.name)
+    private borrowModel: Model<BorrowTransaction>,
+    @InjectModel(Book.name) private bookModel: Model<Book>,
+    private readonly dbService: DatabaseService,
+  ) {}
 
   async create(
     createBorrowingDto: CreateBorrowingDTO,
     user: Express.Request['user'],
   ) {
-    // 1. Check user authentication first
     if (!user) {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    // 2. Use transaction to ensure data consistency
-    return this.prisma.$transaction(async (tx) => {
-      // 3. Check if book exists
-      const book = await tx.book.findUnique({
-        where: { id: createBorrowingDto.bookId },
-      });
+    const { bookId, dueDate } = createBorrowingDto;
 
-      if (!book || book.isDeleted) {
-        throw new NotFoundException('Book not found');
-      }
-
-      // 4. Check stock availability
-      if (book.availableStock < 1) {
-        throw new BadRequestException('Book is out of stock');
-      }
-
-      // 5. Check if user already borrowed this book (and not returned)
-      const existingBorrow = await tx.borrowTransaction.findFirst({
-        where: {
-          userId: user.id,
-          bookId: createBorrowingDto.bookId,
-          status: { in: ['BORROWED', 'OVERDUE'] },
-        },
-      });
-
-      if (existingBorrow) {
-        throw new BadRequestException('You already have this book borrowed');
-      }
-
-      // 6. Decrease available stock
-      await tx.book.update({
-        where: { id: createBorrowingDto.bookId },
-        data: { availableStock: { decrement: 1 } },
-      });
-
-      // 7. Create borrowing record
-      const borrowing = await tx.borrowTransaction.create({
-        data: {
-          userId: user.id,
-          bookId: createBorrowingDto.bookId,
-          dueDate: createBorrowingDto.dueDate,
-        },
-        include: { book: true, user: { omit: { password: true } } },
-      });
-
-      return borrowing;
+    // Check if book exists
+    const book = await this.bookModel.findOne({
+      _id: bookId,
+      isDeleted: false,
     });
+
+    if (!book) {
+      throw new NotFoundException('Book not found');
+    }
+
+    if (book.availableStock < 1) {
+      throw new BadRequestException('Book is out of stock');
+    }
+
+    // Check if user already borrowed this book
+    const existingBorrow = await this.borrowModel.findOne({
+      userId: user.id,
+      bookId: bookId,
+      status: { $in: ['BORROWED', 'OVERDUE'] },
+    });
+
+    if (existingBorrow) {
+      throw new BadRequestException('You already have this book borrowed');
+    }
+
+    // Decrease available stock
+    await this.bookModel.updateOne(
+      { _id: bookId },
+      { $inc: { availableStock: -1 } },
+    );
+
+    // Create borrowing record
+    const newBorrowing = await this.borrowModel.create({
+      userId: new Types.ObjectId(user.id),
+      bookId: new Types.ObjectId(bookId),
+      dueDate: dueDate,
+      status: 'BORROWED',
+    });
+
+    // Return with populated fields
+    return this.borrowModel
+      .findById(newBorrowing._id)
+      .populate('bookId', 'title')
+      .populate('userId', 'name email')
+      .exec();
   }
 
-  findAll(query: borrowQuery) {
-    return this.prisma.$transaction(async (prisma) => {
-      const whereClause: Prisma.BorrowTransactionWhereInput = query.status
-        ? {
-            status: query.status as TransactionStatus,
-          }
-        : {};
-      const pagination = this.prisma.handleQueryPagination(query);
-      const borrowTransactions = await prisma.borrowTransaction.findMany({
-        ...removeFields(pagination, ['page']),
-        where: whereClause,
-      });
+  async findAll(query: borrowQuery) {
+    const whereClause: any = query.status ? { status: query.status } : {};
 
-      const count = await prisma.borrowTransaction.count({
-        where: whereClause,
-      });
+    const pagination = this.dbService.handleQueryPagination(query);
 
-      return {
-        data: borrowTransactions,
-        ...this.prisma.formatPaginationResponse({
-          page: pagination.page,
-          count,
-          limit: pagination.take,
-        }),
-      };
-    });
+    const [borrowTransactions, count] = await Promise.all([
+      this.borrowModel
+        .find(whereClause)
+        .skip(pagination.skip)
+        .limit(pagination.take)
+        .populate('bookId', 'title')
+        .populate('userId', 'name email')
+        .exec(),
+      this.borrowModel.countDocuments(whereClause),
+    ]);
+
+    return {
+      data: borrowTransactions,
+      ...this.dbService.formatPaginationResponse({
+        page: pagination.page,
+        count,
+        limit: pagination.take,
+      }),
+    };
   }
 
   async findOne(id: string) {
-    const borrowTransaction = await this.prisma.borrowTransaction.findUnique({
-      where: { id },
-      include: {
-        book: true,
-        user: {
-          omit: { password: true },
-        },
-      },
-    });
+    const borrowTransaction = await this.borrowModel
+      .findOne({ _id: id })
+      .populate('bookId', 'title')
+      .populate('userId', 'name email');
 
     if (!borrowTransaction) {
       throw new NotFoundException(`Borrow transaction with id ${id} not found`);
@@ -124,56 +123,52 @@ export class BorrowingService {
   }
 
   async update(id: string, updateBorrowingDto: UpdateBorrowingDTO) {
-    return this.prisma.$transaction(async (tx) => {
-      // Get current borrow transaction
-      const borrowTransaction = await tx.borrowTransaction.findUnique({
-        where: { id },
-      });
+    // Get current borrow transaction
+    const borrowTransaction = await this.borrowModel.findById(id);
 
-      if (!borrowTransaction) {
-        throw new NotFoundException('Borrow transaction not found');
+    if (!borrowTransaction) {
+      throw new NotFoundException('Borrow transaction not found');
+    }
+
+    // If status is changing to RETURNED, increment available stock
+    if (
+      updateBorrowingDto.status === 'RETURNED' &&
+      borrowTransaction.status !== 'RETURNED'
+    ) {
+      await this.bookModel.updateOne(
+        { _id: borrowTransaction.bookId },
+        { $inc: { availableStock: 1 } },
+      );
+
+      // Set return date if not provided
+      if (!updateBorrowingDto.returnDate) {
+        updateBorrowingDto.returnDate = new Date();
       }
+    }
 
-      // If status is changing to RETURNED, increment available stock
-      if (
-        updateBorrowingDto.status === 'RETURNED' &&
-        borrowTransaction.status !== 'RETURNED'
-      ) {
-        await tx.book.update({
-          where: { id: borrowTransaction.bookId },
-          data: { availableStock: { increment: 1 } },
-        });
+    const updated = await this.borrowModel.findByIdAndUpdate(
+      id,
+      updateBorrowingDto,
+      { new: true },
+    );
 
-        // Set return date if not provided
-        if (!updateBorrowingDto.returnDate) {
-          updateBorrowingDto.returnDate = new Date();
-        }
-      }
-
-      return tx.borrowTransaction.update({
-        where: { id },
-        data: updateBorrowingDto,
-      });
-    });
+    return updated;
   }
 
   async remove(id: string) {
-    const borrowTransaction = await this.prisma.borrowTransaction.findUnique({
-      where: { id },
-    });
+    const deletedTransaction = await this.borrowModel
+      .findOneAndUpdate(
+        { _id: id, isDeleted: false },
+        { isDeleted: true },
+        { new: true },
+      )
+      .exec();
 
-    if (!borrowTransaction) {
+    if (!deletedTransaction) {
       throw new NotFoundException(`Borrow transaction with id ${id} not found`);
     }
 
-    if (borrowTransaction.isDeleted) {
-      throw new NotFoundException(`Borrow transaction with id ${id} not found`);
-    }
-
-    return this.prisma.borrowTransaction.update({
-      where: { id },
-      data: { isDeleted: true },
-    });
+    return deletedTransaction;
   }
 
   // Cron job that runs every day at midnight
@@ -183,19 +178,20 @@ export class BorrowingService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const result = await this.prisma.borrowTransaction.updateMany({
-      where: {
+    const result = await this.borrowModel.updateMany(
+      {
         status: 'BORROWED',
-        dueDate: {
-          lt: today,
-        },
+        dueDate: { $lt: today },
       },
-      data: {
-        status: 'OVERDUE',
+      {
+        $set: { status: 'OVERDUE' },
       },
-    });
+    );
 
-    this.logger.log(`Updated ${result.count} transactions to OVERDUE status`);
+    this.logger.log(
+      `Updated ${result.modifiedCount} transactions to OVERDUE status`,
+    );
+
     return result;
   }
 }

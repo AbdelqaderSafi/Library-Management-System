@@ -6,10 +6,7 @@ import {
 } from 'src/types/util.types';
 
 @Injectable()
-export class DatabaseService extends PrismaClient implements OnModuleInit {
-  async onModuleInit() {
-    await this.$connect();
-  }
+export class DatabaseService {
   handleQueryPagination(query: PaginationQueryType) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);

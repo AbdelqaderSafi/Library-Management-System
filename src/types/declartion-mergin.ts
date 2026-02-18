@@ -2,6 +2,7 @@ import { UserResponseDTO } from 'src/modules/auth/dto/auth.dto';
 
 export type EnvVariables = {
   JWT_SECRET: string;
+  MONGO_URI: string;
 };
 
 declare global {

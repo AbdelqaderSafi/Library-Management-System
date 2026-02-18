@@ -99,7 +99,7 @@ export class BorrowingController {
     @Body(new ZodValidationPipe(borrowingValidationSchema))
     createBorrowingDto: CreateBorrowingDTO,
     @User() user: UserResponseDTO['userData'],
-  ): Promise<BorrowingResponseDTO> {
+  ) {
     return this.borrowingService.create(createBorrowingDto, user);
   }
 
@@ -176,7 +176,7 @@ export class BorrowingController {
     return this.borrowingService.findAll(query);
   }
 
-  @Roles(['ADMIN', 'LIBRARIAN'])
+  @Roles(['ADMIN', 'LIBRARIAN', 'MEMBER'])
   @Get(':id')
   @ApiOperation({
     summary: 'Get a borrowing transaction by ID (Admin/Librarian only)',
